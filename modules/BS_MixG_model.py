@@ -39,3 +39,4 @@ if __name__ == '__main__':
     pi_init = np.ones(26) / 26
     X = np.linspace(1000, 1700, 25)
     C_pred = (C_MixG(X, r, tau, sigma, mu_init, pi_init))
+    print(C_pred)
