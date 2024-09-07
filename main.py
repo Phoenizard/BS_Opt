@@ -3,6 +3,9 @@ from modules.BS_MixG_model import C_MixG
 from modules.BS_Theoretical_Model import BS_Theoretical_Value, add_noise_to_option_values
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize, LinearConstraint
+from modules.BS_MixG_model import C_MixG_Torch
+import torch
+from utils import loss_torch, Expection, FutureValue, loss
 
 np.random.seed(0)
 
@@ -18,18 +21,6 @@ sigma_0 = 0.2
 sigma_1000 = 0.2  # 当 X = 1000 时的波动率
 sigma_1700 = 0.4  # 当 X = 1700 时的波动率
 
-def loss(C_pred, C_true):
-    if C_pred.shape != C_true.shape:
-        raise ValueError("C_pred and C_true should have the same shape")
-    return np.mean((C_pred - C_true) ** 2)
-
-# 计算Expection价值
-def Expection(mu, pi):
-    return np.dot(np.exp(mu), pi) * np.exp(sigma_0 ** 2 / 2)
-
-# 计算看涨期权下未来价值
-def FutureValue(r, d, tau, X):
-    return (np.exp((r - d) * tau) * X).mean()
 
 # 目标函数
 def objective(pi, X, r, tau, sigma_0, mu, C_obs):
@@ -37,19 +28,40 @@ def objective(pi, X, r, tau, sigma_0, mu, C_obs):
     C_pred = C_MixG(X, r, tau, sigma_0, mu, pi)
     return loss(C_pred, C_obs)
 
-def constraint_expection(pi, mu):
+def constraint_expection(pi, mu, sigma_0, FV):
     # 计算期望值和未来价值
-    E_value = Expection(mu, pi)
+    E_value = Expection(mu, pi, sigma_0)
     return E_value - FV
 
-def Quad_Optimize(X, r, tau, sigma_0, mu, pi_init, C_obs):
-    expection_constraint = {'type': 'eq', 'fun': constraint_expection, 'args': (mu,)}
-    bounds = [(0, None)] * (n + 1) # pi之和为1
+def Quad_Optimize(X, r, tau, sigma_0, mu, pi_init, C_obs, FV):
+    epsilon = 1e-6
+    bounds = [(epsilon, 1 - epsilon)] * (n + 1)
+    expection_constraint = {'type': 'eq', 'fun': constraint_expection, 'args': (mu, sigma_0, FV)}
     linear_constraint = LinearConstraint(np.ones(n + 1), 1, 1)
     res = minimize(objective, x0=pi_init, args=(X, r, tau, sigma_0, mu, C_obs), method='SLSQP', 
                 constraints=[expection_constraint, linear_constraint], bounds=bounds,
                 options={'disp': True, 'ftol': 1e-9})
     return res
+
+def gradient_hessian(X, r, tau, sigma_0, mu_torch, pi, C_obs):
+    # Calculate the value of call options in G Mixtures model
+    if not isinstance(mu_torch, torch.Tensor) or not isinstance(C_obs, torch.Tensor) or not isinstance(X, torch.Tensor):
+        raise ValueError("mu_torch, C_obs, and X should be torch.Tensor")
+    if mu_torch.requires_grad is False:
+        raise ValueError("mu_torch should require grad")
+    C_pred = C_MixG_Torch(X, r, tau, sigma_0, mu_torch, pi)
+    loss = loss_torch(C_pred, C_obs)
+
+    # 计算 loss 相对于 mu_torch 的梯度
+    grad = torch.autograd.grad(loss, mu_torch, create_graph=True)[0]
+    hessian_matrix = torch.zeros(n + 1, n + 1)
+    # 计算 Hessian，每个元素是梯度对 mu_torch 的二次导数
+    for i in range(n + 1):
+        grad_i = grad[i]
+        hessian_row = torch.autograd.grad(grad_i, mu_torch, retain_graph=True)[0]
+        hessian_matrix[i] = hessian_row
+
+    return grad, hessian_matrix
 
 if __name__ == '__main__':
     BS_Value = BS_Theoretical_Value(X, ST, T, r, d, sigma_1000, sigma_1700)
@@ -58,19 +70,38 @@ if __name__ == '__main__':
     mu = np.random.uniform(low=7.107, high=7.265, size=(n + 1))
     pi_init = np.ones(n + 1) / (n + 1)  # 初始猜测的 pi
     C_pred = C_MixG(X, r, tau, sigma_0, mu, pi_init)
-    # 损失函数
+    #=======================二次优化求解器=======================
     FV = FutureValue(r, d, tau, X)
-    res = Quad_Optimize(X, r, tau, sigma_0, mu, pi_init, C_obs)
+    res = Quad_Optimize(X, r, tau, sigma_0, mu, pi_init, C_obs, FV)
     pi_opt = res.x
-    C_opt_pi = C_MixG(X, r, tau, sigma_0, mu, pi_opt)
+    loss_opt_1 = res.fun
+    C_pred_opt_1 = C_MixG(X, r, tau, sigma_0, mu, pi_opt)
     print("Optimized pi: ", pi_opt)
-    print("Optimized loss: ", res.fun)
+    print("Optimized loss after Qrad_Opt: ", loss_opt_1)
     print("Optimized Expection: ", Expection(mu, pi_opt), "Future Value: ", FV)
-    # 画图
-    plt.plot(X, C_obs, label='Observed')
-    plt.plot(X, C_pred, label='Predicted')
-    plt.plot(X, C_opt_pi, label='Optimized')
-    plt.xlabel('Strike Price (X)')
-    plt.ylabel('Option Price (C)')
+    #=======================Netwon-Raphson求解器=================
+    X_torch = torch.tensor(X, dtype=torch.float32)
+    C_obs_torch = torch.tensor(C_obs, dtype=torch.float32)
+    mu_opt = torch.tensor(mu, dtype=torch.float32, requires_grad=True)
+    pi_opt = torch.tensor(pi_opt, dtype=torch.float32)
+    epoch = 5
+    for i in range(epoch):
+        grad, hessian = gradient_hessian(X_torch, r, tau, sigma_0, mu_opt, pi_opt, C_obs_torch)
+        mu_opt = mu_opt - torch.inverse(hessian) @ grad
+    mu_opt = mu_opt.detach().numpy()
+    pi_opt = pi_opt.detach().numpy()
+    # Calculate the Expection and Future Value
+    print("Expection: ", Expection(mu_opt, pi_opt))
+    print("Future Value: ", FV)
+    C_pred_opt_2 = C_MixG(X, r, tau, sigma_0, mu_opt, pi_opt)
+    loss_opt_2 = loss(C_pred_opt_2, C_obs)
+    print("Loss after Opt : ", loss_opt_2)
+    # 绘制图像BS和混合模型的对比
+    plt.plot(X, C_obs, label='BS')
+    plt.plot(X, C_pred, label='MixG_init')
+    plt.plot(X, C_pred_opt_1, label='MixG_opt_1')
+    plt.plot(X, C_pred_opt_2, label='MixG_opt_2')
+    plt.xlabel('Strike Price(X)')
+    plt.ylabel('Option Price')
     plt.legend()
     plt.show()
