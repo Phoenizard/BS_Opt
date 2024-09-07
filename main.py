@@ -9,7 +9,7 @@ from utils import loss_torch, Expection, FutureValue, loss
 import warnings
 warnings.filterwarnings('ignore')
 
-np.random.seed(0)
+# np.random.seed(0)
 
 n = 25
 # 从1000-1700均匀取25个数
@@ -75,8 +75,8 @@ def simulation_LOOCV(sigma_0=0.07, C_obs=None):
     pi_opt = res.x
     loss_opt_1 = res.fun
     C_pred_opt_1 = C_MixG(X, r, tau, sigma_0, mu, pi_opt)
-    print("Optimized loss after Qrad_Opt: ", loss_opt_1)
-    print("Optimized Expection: ", Expection(mu, pi_opt), "Future Value: ", FV)
+    # print("Optimized loss after Qrad_Opt: ", loss_opt_1)
+    # print("Optimized Expection: ", Expection(mu, pi_opt), "Future Value: ", FV)
     #=======================Netwon-Raphson求解器=================
     X_torch = torch.tensor(X, dtype=torch.float32)
     C_obs_torch = torch.tensor(C_obs, dtype=torch.float32)
@@ -104,16 +104,15 @@ if __name__ == '__main__':
     for sigma_0 in sigma_candidates:
         try:
             C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt = simulation_LOOCV(sigma_0, C_obs)
-            resutls.append([C_obs, C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt])
+            resutls.append([sigma_0, C_obs, C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt])
         except Exception as e:
-            print("Error: ", e)
             continue
     #==========================绘图==========================
     # 选出loss最小的模型
-
     best_model = min(resutls, key=lambda x: x[-1])
     print("Best Model: ", best_model[-1])
-    C_obs, C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt = best_model
+    sigma_0, C_obs, C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt = best_model
+    print("Best sigma_0: ", sigma_0)
     plt.plot(X, C_obs, label='BS')
     plt.plot(X, C_pred, label='MixG_init')
     plt.plot(X, C_pred_opt_1, label='MixG_opt_1')
