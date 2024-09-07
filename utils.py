@@ -25,3 +25,16 @@ def Expection(mu, pi, sigma_0=0.2):
 # 计算看涨期权下未来价值
 def FutureValue(r, d, tau, X):
     return (np.exp((r - d) * tau) * X).mean()
+
+# Function to simulate ST using the Black-Scholes model and estimate the standard deviation of ln(ST)
+def simulate_and_estimate_std(S, K, T, r, d, sigma, num_simulations=10):
+    std_estimates = []
+
+    for _ in range(num_simulations):
+        Z = np.random.normal(size=len(K))
+        ST = S * np.exp((r - d - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * Z)
+        ln_ST = np.log(ST)
+        _, std_estimate = norm.fit(ln_ST)
+        std_estimates.append(std_estimate)
+
+    return std_estimates
