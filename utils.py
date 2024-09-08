@@ -38,3 +38,6 @@ def simulate_and_estimate_std(S, K, T, r, d, sigma, num_simulations=10):
         std_estimates.append(std_estimate)
 
     return std_estimates
+
+def constraint_loss(left_term, right_term, weight=1.0):
+    return weight * torch.mean((left_term - right_term) ** 2)

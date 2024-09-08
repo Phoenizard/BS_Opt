@@ -51,13 +51,6 @@ def C_MixG_Torch(X, r, tau, sigma, mu, pi):
     """
     if not isinstance(mu, torch.Tensor):
         raise ValueError("mu should be a torch.Tensor")
-    # 确保X是torch.Tensor
-    X = torch.tensor(X, dtype=torch.float32)
-    r = torch.tensor(r, dtype=torch.float32)
-    tau = torch.tensor(tau, dtype=torch.float32)
-    sigma = torch.tensor(sigma, dtype=torch.float32)
-    pi = torch.tensor(pi, dtype=torch.float32)
-    
     # 计算d1和d2为向量
     d1 = (torch.exp(-r * tau + mu + 0.5 * sigma ** 2)[:, None] * 
           F_torch((torch.log(X) - (mu[:, None] + sigma ** 2)) / sigma))
