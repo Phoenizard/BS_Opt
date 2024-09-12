@@ -1,10 +1,8 @@
 import torch
-from torch.utils.data import DataLoader, TensorDataset
 from modules.BS_MixG_model import C_MixG_Torch
 from modules.BS_Theoretical_Model import BS_Theoretical_Value, add_noise_to_option_values
 from utils import loss_torch, constraint_loss
 import numpy as np
-from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
@@ -20,7 +18,7 @@ class Model(torch.nn.Module):
         super(Model, self).__init__()
         # self.pi = torch.nn.Parameter(torch.ones(args.n + 1) / (args.n + 1), requires_grad=True)
         self.pi_raw = torch.nn.Parameter(torch.ones(args.n + 1), requires_grad=True)
-        # low=7.107, high=7.265 随机选取26个数
+        # mu 0, 1正态初始化
         self.mu = torch.nn.Parameter(torch.FloatTensor(n + 1).uniform_(7.107, 7.265), requires_grad=True)
         self.sigma =torch.nn.Parameter(torch.tensor(0.07), requires_grad=True)
         self.r = torch.tensor(args.r)
@@ -38,7 +36,6 @@ class Model(torch.nn.Module):
         sigma_term = torch.exp(self.sigma ** 2 / 2)
         left_term = weighted_exp_mu * sigma_term
         right_term = torch.mean(torch.exp((self.r - self.d) * self.tau) * X)
-        
         return left_term, right_term
 
     def forward(self, X):
@@ -70,12 +67,9 @@ if __name__ == '__main__':
     losses = []
     for epoch in tqdm(range(30)):
         loss = loss_torch(model(X), C_obs)
-        # 计算约束损失
         left_term, right_term = model.constraint(X)
         cons_loss = constraint_loss(left_term, right_term, weight=5)
-        # 总损失：原始损失 + 约束损失
         total_loss = loss + cons_loss
-        # 反向传播计算梯度
         total_loss.backward()
         losses.append(loss.detach().numpy())
 

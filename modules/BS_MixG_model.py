@@ -50,6 +50,7 @@ def C_MixG_Torch(X, r, tau, sigma, mu, pi):
     计算G混合模型中看涨期权的理论价值
     """
     if not isinstance(mu, torch.Tensor):
+        print(type(mu))
         raise ValueError("mu should be a torch.Tensor")
     # 计算d1和d2为向量
     d1 = (torch.exp(-r * tau + mu + 0.5 * sigma ** 2)[:, None] * 
