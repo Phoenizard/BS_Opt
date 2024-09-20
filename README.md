@@ -19,7 +19,7 @@ git clone https://github.com/Phoenizard/BS_Opt.git
 ## Usage
 
 ``notebooks`` 中的 ``Simulated2.ipynb`` 是利用BS公式生成的模拟数据，``main`` 中为采用了 AMD 公司的真实数据，可以直接运行。
-
+```
 ├── config
 │   └── config.py
 ├── data
@@ -41,6 +41,8 @@ git clone https://github.com/Phoenizard/BS_Opt.git
 ├── model.py
 ├── optimize.py
 └── utils.py
+
+```
 
 ## Contributing
 
