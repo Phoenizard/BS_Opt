@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from scipy.stats import norm
+import matplotlib.pyplot as plt
 
 def phi(x):
     return norm.pdf(x)
