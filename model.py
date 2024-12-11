@@ -5,6 +5,10 @@ from utils import loss_torch, constraint_loss
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import warnings
+import os
+warnings.filterwarnings('ignore')
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 class Args:
     def __init__(self, n, r, tau, d):

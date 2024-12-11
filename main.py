@@ -2,8 +2,12 @@ import numpy as np
 from modules.BS_Theoretical_Model import BS_Theoretical_Value, add_noise_to_option_values
 from matplotlib import pyplot as plt
 from optimize import simulation_LOOCV
-import warnings
+from optimize import calculate_and_plot_expression
 
+
+import warnings
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 warnings.filterwarnings('ignore')
 
 # np.random.seed(0)
@@ -24,7 +28,12 @@ if __name__ == '__main__':
     BS_Value = BS_Theoretical_Value(X, ST, T, r, d, sigma_1000, sigma_1700)
     C_obs = add_noise_to_option_values(BS_Value, X)
     print(type(C_obs), type(X))
-    C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt = simulation_LOOCV(0.071, C_obs, n, X, r, tau, d)
+    C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt,mu_opt, pi_opt = simulation_LOOCV(0.071, C_obs, n, X, r, tau, d)
+
+
+    sigma = 0.71
+    calculate_and_plot_expression(pi_opt, mu_opt, sigma, 1500, r, tau, 5*ST)
+
     # 绘制图像
     plt.plot(X, C_obs, label='Observed')
     plt.plot(X, C_pred_opt_2, label='Optimized')

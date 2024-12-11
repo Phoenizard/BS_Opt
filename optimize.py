@@ -87,5 +87,55 @@ def simulation_LOOCV(sigma_0, C_obs, n, X, r, tau,d, mu_guess=None):
     loss_opt_2 = loss(C_pred_opt_2, C_obs)
     print("Loss after Opt : ", loss_opt_2)
     # 绘制图像BS和混合模型的对比
-    return C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt_2, mu_opt, pi_opt
+    return C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt_2,mu_opt, pi_opt
     
+
+def calculate_and_plot_expression(pi, mu, sigma, X, r, tau, S_T_max, num_points=200):
+
+    pi = torch.tensor(pi, dtype=torch.float32)
+    mu = torch.tensor(mu, dtype=torch.float32)
+    sigma = torch.tensor(sigma, dtype=torch.float32)
+    X = torch.tensor(X, dtype=torch.float32)
+    r = torch.tensor(r, dtype=torch.float32)
+    tau = torch.tensor(tau, dtype=torch.float32)
+
+    # 定义 S_T 的范围
+    S_T_range = torch.linspace(X, S_T_max, num_points, requires_grad=True)
+
+    # 计算表达式
+    expression_values = torch.zeros_like(S_T_range)
+    for i in range(len(pi)):
+        part1 = (S_T_range - X) / (S_T_range * sigma * torch.sqrt(torch.tensor(2 * torch.pi)))
+        part2 = torch.exp(-((torch.log(S_T_range) - mu[i])**2) / (2 * sigma**2))
+        expression = pi[i] * part1 * part2 * torch.exp(-r * tau)
+        expression_values += expression  # 累加表达式值
+
+    # 对整个表达式进行求导
+    expression_values.sum().backward()
+    gradients = S_T_range.grad
+
+    # 绘制图像
+    plt.figure(figsize=(10, 5))
+
+    # 原始函数图
+    plt.subplot(1, 2, 1)
+    plt.plot(S_T_range.detach().numpy(), expression_values.detach().numpy(), label='Expression Value')
+    plt.title('Call vs. S_T')
+    plt.xlabel('S_T')
+    plt.ylabel('Call')
+    plt.grid(True)
+    plt.legend()
+
+    # 导数图
+    plt.subplot(1, 2, 2)
+    plt.plot(S_T_range.detach().numpy(), gradients.numpy(), label='Derivative', color='red')
+    plt.title('Derivative of Call vs. S_T')
+    plt.xlabel('S_T')
+    plt.ylabel('Derivative')
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+    return expression_values, gradients
