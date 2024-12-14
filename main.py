@@ -4,7 +4,6 @@ from matplotlib import pyplot as plt
 from optimize import simulation_LOOCV
 from optimize import calculate_and_plot_expression
 
-
 import warnings
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
@@ -16,7 +15,7 @@ n = 25
 # 从1000-1700均匀取25个数
 X = np.linspace(1000, 1700, n)
 T = 30
-r = 0.045
+r = 1.045
 d = 0.025
 ST = 1365
 tau = T / 365
@@ -30,11 +29,12 @@ if __name__ == '__main__':
     print(type(C_obs), type(X))
     C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt,mu_opt, pi_opt = simulation_LOOCV(0.071, C_obs, n, X, r, tau, d)
 
+    print('Optimized mu:', mu_opt,"type:",type(mu_opt))
+    print('Optimized pi:', pi_opt,"type:",type(pi_opt))
+    sigma = 0.071
+    calculate_and_plot_expression(pi_opt, mu_opt, sigma, 1500, 1.045, tau, 1.5*ST)
 
-    sigma = 0.71
-    calculate_and_plot_expression(pi_opt, mu_opt, sigma, 1500, r, tau, 5*ST)
 
-    # 绘制图像
     plt.plot(X, C_obs, label='Observed')
     plt.plot(X, C_pred_opt_2, label='Optimized')
     plt.legend()

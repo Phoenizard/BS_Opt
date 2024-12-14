@@ -89,6 +89,8 @@ def simulation_LOOCV(sigma_0, C_obs, n, X, r, tau,d, mu_guess=None):
     # 绘制图像BS和混合模型的对比
     return C_pred, C_pred_opt_1, C_pred_opt_2, loss_opt_2,mu_opt, pi_opt
     
+import torch
+import matplotlib.pyplot as plt
 
 def calculate_and_plot_expression(pi, mu, sigma, X, r, tau, S_T_max, num_points=200):
 
@@ -118,7 +120,7 @@ def calculate_and_plot_expression(pi, mu, sigma, X, r, tau, S_T_max, num_points=
     plt.figure(figsize=(10, 5))
 
     # 原始函数图
-    plt.subplot(1, 2, 1)
+    plt.subplot(2, 2, 1)
     plt.plot(S_T_range.detach().numpy(), expression_values.detach().numpy(), label='Expression Value')
     plt.title('Call vs. S_T')
     plt.xlabel('S_T')
@@ -127,7 +129,7 @@ def calculate_and_plot_expression(pi, mu, sigma, X, r, tau, S_T_max, num_points=
     plt.legend()
 
     # 导数图
-    plt.subplot(1, 2, 2)
+    plt.subplot(2, 2, 2)
     plt.plot(S_T_range.detach().numpy(), gradients.numpy(), label='Derivative', color='red')
     plt.title('Derivative of Call vs. S_T')
     plt.xlabel('S_T')
