@@ -102,3 +102,46 @@ if __name__ == '__main__':
     mu = torch.tensor(mu_init, dtype=torch.float32, requires_grad=True)
     C_pred_torch = C_MixG_Torch(X, r, tau, sigma, mu, pi_init)
     print(C_pred_torch)
+
+
+
+# --- 请将以下函数添加到 modules/BS_MixG_model.py 文件末尾 ---
+
+def C_MixG_MultiSigma(X, r, tau, sigmas, mus, pis):
+    """
+    Numpy-based MixG model that accepts a vector of sigmas.
+    """
+    X = np.asarray(X)
+    sigmas = np.asarray(sigmas)
+    mus = np.asarray(mus)
+    pis = np.asarray(pis)
+
+    # Broadcasting shapes: X(n,), mus(k,), sigmas(k,), pis(k,) -> C_pred(k, n)
+    d1 = (-np.log(X) + mus[:, np.newaxis] + sigmas[:, np.newaxis]**2) / sigmas[:, np.newaxis]
+    d2 = d1 - sigmas[:, np.newaxis]
+
+    # Standard normal CDF
+    C_pred_components = np.exp(-r * tau) * \
+                        (np.exp(mus[:, np.newaxis] + sigmas[:, np.newaxis]**2 / 2) * norm.cdf(d1) - \
+                         X[np.newaxis, :] * norm.cdf(d2))
+    
+    # Final price is the weighted sum
+    C_final = np.sum(pis[:, np.newaxis] * C_pred_components, axis=0)
+    return C_final
+
+def C_MixG_Torch_MultiSigma(X, r, tau, sigmas, mus, pis):
+    """
+    PyTorch-based MixG model that accepts a vector of sigmas.
+    """
+    normal = torch.distributions.Normal(0, 1)
+
+    # Broadcasting shapes: X(n,), mus(k,), sigmas(k,), pis(k,) -> C_pred(k, n)
+    d1 = (-torch.log(X) + mus.unsqueeze(1) + sigmas.unsqueeze(1)**2) / sigmas.unsqueeze(1)
+    d2 = d1 - sigmas.unsqueeze(1)
+    
+    C_pred_components = torch.exp(-r * tau) * \
+                        (torch.exp(mus.unsqueeze(1) + sigmas.unsqueeze(1)**2 / 2) * normal.cdf(d1) - \
+                         X.unsqueeze(0) * normal.cdf(d2))
+
+    C_final = torch.sum(pis.unsqueeze(1) * C_pred_components, dim=0)
+    return C_final
